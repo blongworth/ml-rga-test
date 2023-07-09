@@ -102,6 +102,8 @@ bool RGA::setNoiseFloor(int noiseFloor) {
 }
 
 bool RGA::scanMass(int mass) {
+  // don't run if receive is in progress or previous data has not been parsed
+  if (packetLength || newData) return false; 
   //flush any garbage from serial read buffer
   flushReadBuffer();
   //start mass scan
