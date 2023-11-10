@@ -16,9 +16,15 @@
 
 #include <Arduino.h>
 
-#define RGA_SERIAL Serial3 // serial port for RGA
-#define RGA_RTS 15 // RTS pin for RGA
+#define RGA_SERIAL Serial4 // serial port for RGA
+#define RGA_RTS 3 // RTS pin for RGA
 #define MAX_PACKET_LENGTH 50
+
+/* TODO:
+ * send_command
+ * check_status_byte
+ * list of status reporting commands
+*/
 
 
 class RGA {
@@ -30,20 +36,28 @@ public:
     bool setNoiseFloor(int noiseFloor);
     bool scanMass(int mass);
     long readMass();
-    bool totalPressure();
+    float totalPressure();
     bool turnOffFilament();
     bool turnOnFilament();
+    bool setEmissionCurrent(double current);
+    double getEmissionCurrent();
     bool calibrateAll();
     //bool get_device_id();
 
 private:
+    String statusCommands[] = {"EE", "FL", "IE", "VF", "CA", "HV"};
     bool newData;
     int packetLength;
     byte packet[MAX_PACKET_LENGTH];
     void readSerial();
     void flushReadBuffer();
     //HardwareSerial* Serial_port;
-    void sendCommand(char* command, char* parameter);
+    void sendCommand(String command, String parameter);
+    void checkStatusByte();
+    uint8_t *readBufferChunked(int lengthBytes, int attempts);
+    String readBufferLineASCII();
+
+    // needs expected return
     long bytesToCurrent(byte cb[4]);
 };
 
