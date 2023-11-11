@@ -2,6 +2,7 @@
 #include "rga.h"
 
 RGA rga;
+long current;
 
 void setup() {
   Serial.begin(9600);
@@ -15,7 +16,7 @@ void setup() {
 
 void loop() {
   rga.scanMass(28);
-  long current = rga.readMass();
+  current = rga.readMass();
   if (current >= 0) {
     Serial.print("Mass 28 current: ");
     Serial.println(current);

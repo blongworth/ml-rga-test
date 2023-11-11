@@ -116,6 +116,7 @@ bool RGA::scanMass(int mass) {
 // read data from RGA
 long RGA::readMass() {
   readSerial();
+  // check if packet is available
   if (newData) {
     newData = false;
     return bytesToCurrent(packet);
