@@ -26,6 +26,8 @@
 //	Serial_port = &_Serial_port;
 //}
 
+const char* RGA::statusCommands[] = {"EE", "FL", "IE", "VF", "CA", "HV"};
+
 RGA::RGA() {
   newData = false;
   packetLength = 0;
@@ -50,22 +52,6 @@ bool RGA::begin() {
   return true;
 }
 
-// this doesn't work. Timing issue?
-float RGA::status(char *x, int a, int b) {
-  RGA_SERIAL.write(x);
-  const int BUFFER_SIZE = 30;
-  char Var1[BUFFER_SIZE];
-  char VarOut[6];
-  int rlen = RGA_SERIAL.readBytesUntil(13, Var1, BUFFER_SIZE);
-  for ( int i = a; i < b; ++i ) {
-    VarOut[i - a] = Var1[ i ];
-  }
-  float VarNum = atof(VarOut);
-  //  String s = String(Var1);
-  //  int VarNum = roundf(s.toFloat());
-  return VarNum; // return the value
-}
-
 bool RGA::turnOffFilament() {
   sendCommand("FL", "0.0");
   return true; //should check turned off here
@@ -75,7 +61,7 @@ bool RGA::turnOnFilament() {
   sendCommand("FL", emissionCurrent);
   double currentRB = getEmissionCurrent();
   if (currentRB < emissionCurrent - emissionCurrentInc ||
-      currentRB > emissionCurrent + emissionCurrentInc))
+      currentRB > emissionCurrent + emissionCurrentInc)
   {
     return false;
   }
@@ -90,7 +76,7 @@ bool RGA::setEmissionCurrent(double current)
 double RGA::getEmissionCurrent()
 {
   sendCommand("FL", "?");
-  return toFloat(readBufferLineASCII());
+  return readBufferLineASCII().toFloat();
 }
 
 bool RGA::calibrateAll() {
@@ -142,7 +128,7 @@ long RGA::readMass() {
 // Get total pressure
 float RGA::totalPressure() {
   sendCommand("TP", "?");
-  return toFloat(readBufferLineASCII());
+  return readBufferLineASCII().toFloat();
   //need to convert return to pressure
 }
 
@@ -150,6 +136,19 @@ void RGA::flushReadBuffer() {
     while (RGA_SERIAL.available() > 0) {
         RGA_SERIAL.read();
     }
+}
+
+void RGA::sendCommand(String command) {
+  String fullCmd = command + "\r";
+  Serial.print("Sending command '");
+  Serial.print(fullCmd);
+  Serial.println("'...");
+
+  Serial.write(fullCmd.c_str());
+
+  if (isStatusReportingCmd(command)) {
+    checkStatusByte();
+  }
 }
 
 void RGA::sendCommand(String command, String parameter = "") {
@@ -160,14 +159,14 @@ void RGA::sendCommand(String command, String parameter = "") {
 
   Serial.write(fullCmd.c_str());
 
-  if (parameter != "?" && isStatusReportingCommand(cmd)) {
+  if (parameter != "?" && isStatusReportingCmd(command)) {
     checkStatusByte();
   }
 }
 
-bool RGA::isStatusReportingCommand(String cmd) {
-  for (int i = 0; i < sizeof(statusCommands) / sizeof(statusCommands[0]); i++) {
-    if (cmd == statusCommands[i]) {
+bool RGA::isStatusReportingCmd(String command) {
+  for (unsigned int i = 0; i < sizeof(statusCommands) / sizeof(statusCommands[0]); i++) {
+    if (command == statusCommands[i]) {
       return true;
     }
   }
@@ -176,7 +175,7 @@ bool RGA::isStatusReportingCommand(String cmd) {
 
 void RGA::checkStatusByte()
 {
-  Serial.println("Checking status byte...");
+  //Serial.println("Checking status byte...");
   uint8_t statusByte = readBufferChunked(3, 10)[0];  // last two bytes are \n\r
   int binStr[8];
   
@@ -184,37 +183,37 @@ void RGA::checkStatusByte()
     binStr[i] = (statusByte >> (7 - i)) & 1;
   }
 
-  if (!_cdemPresent) {
+  if (!cdemPresent) {
     binStr[3] = 0;
   }
 
   for (int i = 0; i < 8; i++) {
-    if (binStr[i] == 1 && _statusErrorBits[i]) {
+    if (binStr[i] == 1) {
       // Error reported in status echo
-      char errorMsg[50];  // Adjust the size according to your needs
-      snprintf(errorMsg, sizeof(errorMsg), "Error %s reported in status echo!", _statusErrorBits[i]);
-      Serial.println(errorMsg);
+      Serial.print("Error: Status bit ");
+      Serial.print(binStr[i]);
+      Serial.println(" is on!");
       // Handle the exception as needed
     }
   }
 }
 
-#define CHUNK_SIZE 64
 
-uint8_t* RGA::readBufferChunked(int lengthBytes, int attempts = 10) {
+uint8_t* RGA::readBufferChunked(byte lengthBytes, byte attempts = 10) {
   int attemptSleep = 500;
   int recv = 0;
   int recvTotal = 0;
   int attempt = 0;
-  Serial.println("Waiting for serial buffer to fill up...");
-  uint8_t* dataRecv = nullptr;
+  int chunkSize = CHUNK_SIZE;
+  //Serial.println("Waiting for serial buffer to fill up...");
+  char* dataRecv = nullptr;
 
   if (lengthBytes < CHUNK_SIZE) {
-    CHUNK_SIZE = lengthBytes;
+    chunkSize = lengthBytes;
   }
 
   while (recvTotal < lengthBytes) {
-    while ((recv < CHUNK_SIZE) && (recv + recvTotal != lengthBytes)) {
+    while ((recv < chunkSize) && (recv + recvTotal != lengthBytes)) {
       attempt++;
       recv = Serial.available();
       delay(attemptSleep);
@@ -230,7 +229,7 @@ uint8_t* RGA::readBufferChunked(int lengthBytes, int attempts = 10) {
       //Serial.println(lengthBytes);
     }
 
-    dataRecv = new uint8_t[recv];
+    dataRecv = new char[recv];
     Serial.readBytes(dataRecv, recv);
     recvTotal += recv;
     delay(attemptSleep);

@@ -19,6 +19,7 @@
 #define RGA_SERIAL Serial4 // serial port for RGA
 #define RGA_RTS 3 // RTS pin for RGA
 #define MAX_PACKET_LENGTH 50
+#define CHUNK_SIZE 64
 
 /* TODO:
  * send_command
@@ -32,7 +33,6 @@ public:
     //RGA(HardwareSerial& _Serial_port, uint8_t rtsPin);
     RGA();
     bool begin();
-    float status(char *x, int a, int b);
     bool setNoiseFloor(int noiseFloor);
     bool scanMass(int mass);
     long readMass();
@@ -45,16 +45,21 @@ public:
     //bool get_device_id();
 
 private:
-    String statusCommands[] = {"EE", "FL", "IE", "VF", "CA", "HV"};
+    static const char* statusCommands[];
+    float emissionCurrent = 1.0;
+    float emissionCurrentInc = 0.1;
+    static const bool cdemPresent = true;
     bool newData;
     int packetLength;
     byte packet[MAX_PACKET_LENGTH];
     void readSerial();
     void flushReadBuffer();
     //HardwareSerial* Serial_port;
+    void sendCommand(String command);
     void sendCommand(String command, String parameter);
+    bool isStatusReportingCmd(String command);
     void checkStatusByte();
-    uint8_t *readBufferChunked(int lengthBytes, int attempts);
+    uint8_t* readBufferChunked(byte lengthBytes, byte attempts);
     String readBufferLineASCII();
 
     // needs expected return
