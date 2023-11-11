@@ -50,7 +50,7 @@ private:
     float emissionCurrentInc = 0.1;
     static const bool cdemPresent = true;
     bool newData;
-    byte packetLength = 4;
+    byte packetLength;
     byte packet[MAX_PACKET_LENGTH];
     void readSerial();
     void flushReadBuffer();
