@@ -40,12 +40,12 @@ public:
     bool turnOffFilament();
     bool turnOnFilament();
     bool setEmissionCurrent(double current);
-    double getEmissionCurrent();
+    float getEmissionCurrent();
     bool calibrateAll();
     //bool get_device_id();
 
 private:
-    static const char* statusCommands[];
+    static const String statusCommands[];
     float emissionCurrent = 1.0;
     float emissionCurrentInc = 0.1;
     static const bool cdemPresent = true;

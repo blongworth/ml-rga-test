@@ -26,7 +26,7 @@
 //	Serial_port = &_Serial_port;
 //}
 
-const char* RGA::statusCommands[] = {"EE", "FL", "IE", "VF", "CA", "HV"};
+const String RGA::statusCommands[] = {"EE", "FL", "IE", "VF", "CA", "HV"};
 
 RGA::RGA() {
   newData = false;
@@ -54,18 +54,24 @@ bool RGA::begin() {
 
 bool RGA::turnOffFilament() {
   sendCommand("FL", "0.0");
-  return true; //should check turned off here
+  float currentRB = getEmissionCurrent();
+  if (currentRB < 0.0 - emissionCurrentInc ||
+      currentRB > 0.0 + emissionCurrentInc)
+  {
+    return false;
+  }
+  return true; 
 }
 
 bool RGA::turnOnFilament() {
   sendCommand("FL", emissionCurrent);
-  double currentRB = getEmissionCurrent();
+  float currentRB = getEmissionCurrent();
   if (currentRB < emissionCurrent - emissionCurrentInc ||
       currentRB > emissionCurrent + emissionCurrentInc)
   {
     return false;
   }
-  return true; //should check turned on here
+  return true; 
 }
 
 bool RGA::setEmissionCurrent(double current)
@@ -73,7 +79,7 @@ bool RGA::setEmissionCurrent(double current)
     return false;
 }
 
-double RGA::getEmissionCurrent()
+float RGA::getEmissionCurrent()
 {
   sendCommand("FL", "?");
   return readBufferLineASCII().toFloat();
@@ -87,10 +93,7 @@ bool RGA::calibrateAll() {
 
 bool RGA::setNoiseFloor(int noiseFloor) {
   // set noise floor
-  char s[10];
-  sprintf (s, "NF%d\r", noiseFloor);
-  RGA_SERIAL.write(s);
-  // sendCommand("NF", noiseFloor);
+  sendCommand("NF", String(noiseFloor));
   //delay or check that noise floor set
   //should read status byte and return
   //should query noise floor and check set correctly
@@ -105,12 +108,7 @@ bool RGA::scanMass(int mass) {
   //flush any garbage from serial read buffer
   flushReadBuffer();
   //start mass scan
-  char s[10];
-  sprintf(s, "MR%d\r", mass);
-  RGA_SERIAL.write(s);
-  //check started?
-  //return false if not started correctly
-  //start serial acq
+  sendCommand("MR", String(mass));
   packetLength = 4;
   return true;
 }
@@ -153,11 +151,11 @@ void RGA::sendCommand(String command) {
 
 void RGA::sendCommand(String command, String parameter = "") {
   String fullCmd = command + parameter + "\r";
-  Serial.print("Sending command '");
-  Serial.print(fullCmd);
-  Serial.println("'...");
+  //Serial.print("Sending command '");
+  //Serial.print(fullCmd);
+  //Serial.println("'...");
 
-  Serial.write(fullCmd.c_str());
+  RGA_SERIAL.write(fullCmd.c_str());
 
   if (parameter != "?" && isStatusReportingCmd(command)) {
     checkStatusByte();
