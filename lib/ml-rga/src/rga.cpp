@@ -82,7 +82,8 @@ bool RGA::setEmissionCurrent(double current)
 float RGA::getEmissionCurrent()
 {
   sendCommand("FL", "?");
-  return readBufferLineASCII().toFloat();
+  char flAscii[10];
+  return atof(flAscii);
 }
 
 bool RGA::calibrateAll() {
@@ -127,7 +128,9 @@ long RGA::readMass() {
 // Get total pressure
 float RGA::totalPressure() {
   sendCommand("TP", "?");
-  return readBufferLineASCII().toFloat();
+  char tpAscii[10];
+  readBufferLineASCII(tpAscii);
+  return atof(tpAscii);
   //need to convert return to pressure
 }
 
@@ -249,25 +252,24 @@ uint8_t* RGA::readBufferChunked(byte lengthBytes, byte attempts = 10) {
   return bufferBytes;
 }
 
-String RGA::readBufferLineASCII()
+bool RGA::readBufferLineASCII(char* bufferAscii)
 {
   //Serial.println("Reading a line from serial port...");
-  String bufferAscii;
+  size_t bytesRead;
+  //Rely on readBytesUntil 1s timeout
+  bytesRead = RGA_SERIAL.readBytesUntil('\r', bufferAscii, 128);
+  //Add a nul terminator
+  bufferAscii[bytesRead] = '\0';
 
-    while (Serial.available() > 0) {
-      char c = Serial.read();
-      if (c == '\n' || c == '\r') {
-        break; // Stop reading when newline or carriage return is encountered
-      }
-      bufferAscii += c;
-    }
+  // Read the extra byte required due to \n\r line termination
+  while (Serial.available() > 0) {
+    Serial.read();
+  }
 
-    // Read the extra byte required due to \n\r line termination
-    while (Serial.available() > 0) {
-      Serial.read();
-    }
-
-    bufferAscii.trim(); // Remove leading and trailing whitespaces
+  if (bytesRead < 1)
+  {
+    Serial.println("Error receiving reply from RGA");
+  }
 
   //Serial.print("Received line from serial port: '");
   //Serial.print(bufferAscii);

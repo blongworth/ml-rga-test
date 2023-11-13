@@ -60,7 +60,7 @@ private:
     bool isStatusReportingCmd(String command);
     void checkStatusByte();
     uint8_t* readBufferChunked(byte lengthBytes, byte attempts);
-    String readBufferLineASCII();
+    bool readBufferLineASCII(char* bufferAscii);
 
     // needs expected return
     long bytesToCurrent(byte cb[4]);
